@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: scripts/server/messages-server.js</title>
+    
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+    
+    <h1 class="page-title">Source: scripts/server/messages-server.js</h1>
+    
+    
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source"><code>/**
+ * Messages server module
+ * @module messages-server
+ */
+
+/**
+ * Adds a message to the request, in order to be sent to the client
+ * @function module:messages-server~internalAddMessage
+ * @param {String} type Message type (fatal, error, etc...)
+ * @param {String} message Message text
+ * @param {String} title Message title
+ * @param {Exception} exception An exception used to retrieve script file name and line number for logging
+ * @see Defined in Java code fr.dz.webjs.scripts.WebJSScriptLibrary
+ * @private
+ */
+
+/**
+ * Adds a message to the request, in order to be sent to the client
+ * @function module:messages-server~addMessage
+ * @param {String} type Message type (fatal, error, etc...)
+ * @param {String} message Message text
+ * @param {String} title Message title
+ * @param {Integer} callNumber Number of calls in the stack trace to the non-Messages first piece of code
+ * @private
+ */
+function addMessage(type, message, title, callNumber) {
+	try {
+		throw new Packages.java.lang.Exception("JS logger exception");
+	} catch(e) {
+		return internalAddMessage(type, message, title, e, callNumber + 1);
+	}
+}
+
+/**
+ * Messages server utility
+ * @namespace
+ */
+var Messages = {
+	
+	/**
+	 * Fatal message
+	 * @type {Object}
+	 * @constant
+	 * @default
+	 */		
+	FATAL: { 
+		name: "fatal",
+	},
+	
+	/**
+	 * Error message
+	 * @type {Object}
+	 * @constant
+	 * @default
+	 */
+	ERROR: { 
+		name: "error",
+	},
+	
+	/**
+	 * Warn message
+	 * @type {Object}
+	 * @constant
+	 * @default
+	 */
+	WARN: { 
+		name: "warn",
+	},
+	
+	/**
+	 * Info message
+	 * @type {Object}
+	 * @constant
+	 * @default
+	 */
+	INFO: { 
+		name: "info",
+	},
+	
+	/**
+	 * Debug message
+	 * @type {Object}
+	 * @constant
+	 * @default
+	 */
+	DEBUG: { 
+		name: "debug",
+	},
+	
+	/**
+	 * Available messages types
+	 * @type {Array}
+	 * @constant
+	 * @default
+	 */
+	TYPES: [],
+		
+	/**
+	 * Initialization :
+	 * &lt;ul>&lt;li>constants initialization&lt;/li>&lt;/ul>
+	 * @private
+	 */
+	init: function() {
+		this.TYPES = [this.DEBUG, this.INFO, this.WARN, this.ERROR, this.FATAL];
+	},
+	
+	/**
+	 * Displays a fatal message
+	 * @param {String} message Message
+	 * @param {String} title Title
+	 */
+	fatal: function(message, title) {
+		this.sendMessage(this.FATAL, message, title, 1);
+	},
+	
+	/**
+	 * Displays an error message
+	 * @param {String} message Message
+	 * @param {String} title Title
+	 */
+	error: function(message, title) {
+		this.sendMessage(this.ERROR, message, title, 1);
+	},
+	
+	/**
+	 * Displays a warn message
+	 * @param {String} message Message
+	 * @param {String} title Title
+	 */
+	warn: function(message, title) {
+		this.sendMessage(this.WARN, message, title, 1);
+	},
+	
+	/**
+	 * Displays an info message
+	 * @param {String} message Message
+	 * @param {String} title Title
+	 */
+	info: function(message, title) {
+		this.sendMessage(this.INFO, message, title, 1);
+	},
+	
+	/**
+	 * Displays a debug message
+	 * @param {String} message Message
+	 * @param {String} title Title
+	 */
+	debug: function(message, title) {
+		this.sendMessage(this.DEBUG, message, title, 1);
+	},
+	
+	/**
+	 * Creates a message
+	 * @param {String} type Message type
+	 * @param {String} message Message
+	 * @param {String} title Title
+	 */
+	createMessage: function(type, message, title) {
+		return {type: type, message: message, title: title, date: new Date()};
+	},
+	
+	/**
+	 * Sends a message
+	 * @param {String} type Message type
+	 * @param {String} message Message
+	 * @param {String} title Title
+	 * @param {Integer} callNumber Number of calls in the stack trace to the non-Messages first piece of code
+	 * @private
+	 */
+	sendMessage: function(type, message, title, callNumber) {
+		addMessage(type.name, message, title, callNumber + 1);
+	},
+	
+	/**
+	 * Sends multiple messages
+	 * @param {Array} messages List of messages objects
+	 */
+	sendMessages: function(messages) {
+		$.each(messages, function() {
+			addMessage(this.type.name, this.message, this.title, 1);
+		});
+	},
+};
+
+// Initialization
+Messages.init();
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Index</a></h2><h3>Modules</h3><ul><li><a href="module-configuration-client.html">configuration-client</a></li><li><a href="module-messages-client.html">messages-client</a></li><li><a href="module-messages-server.html">messages-server</a></li><li><a href="module-webjs-client.html">webjs-client</a></li><li><a href="module-webjs-server.html">webjs-server</a></li></ul><h3>Classes</h3><ul><li><a href="jQuery.html">jQuery</a></li></ul><h3>Events</h3><ul><li><a href="module-webjs-client-WebJS.Events.html#event:ajaxComplete">ajaxComplete</a></li><li><a href="module-webjs-client-WebJS.Events.html#event:ajaxError">ajaxError</a></li><li><a href="module-webjs-client-WebJS.Events.html#event:ajaxStart">ajaxStart</a></li><li><a href="module-webjs-client-WebJS.Events.html#event:message">message</a></li></ul><h3>Namespaces</h3><ul><li><a href="module-configuration-client-Configuration.html">Configuration</a></li><li><a href="module-messages-client-Messages.html">Messages</a></li><li><a href="module-messages-server-Messages.html">Messages</a></li><li><a href="module-webjs-client-WebJS.html">WebJS</a></li><li><a href="module-webjs-client-WebJS.Events.html">Events</a></li><li><a href="module-webjs-server-WebJS.html">WebJS</a></li></ul>
+</nav>
+
+<br clear="both">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.2.0-dev</a> on Thu Oct 31 2013 20:07:24 GMT+0100 (CET)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

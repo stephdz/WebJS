@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: static/js/webjs-client.js</title>
+    
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+    
+    <h1 class="page-title">Source: static/js/webjs-client.js</h1>
+    
+    
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source"><code>/**
+ * WebJS client module
+ * @module webjs-client
+ */
+
+/**
+ * WebJS client utility
+ * @namespace
+ */
+var WebJS = {
+		
+	/**
+	 * WebPart request parameter
+	 * @type {String}
+	 * @constant
+	 * @default
+	 */
+	WEB_PART_PARAMETER: "webjs.webPart",
+	
+	/**
+	 * WebJS events
+	 * @namespace Events
+	 * @memberof module:webjs-client~WebJS
+	 */
+	Events: {
+		
+		/**
+		 * Ajax request start event
+		 * @event module:webjs-client~WebJS.Events#ajaxStart
+		 * @type {String}
+		 */
+		/**
+		 * Ajax request start event
+		 * @type {String}
+		 * @constant
+		 * @default
+		 */		
+		AJAX_REQUEST_START: "webjs.ajaxStart",
+		
+		/**
+		 * Ajax request complete event
+		 * @event module:webjs-client~WebJS.Events#ajaxComplete
+		 * @type {String}
+		 */
+		/**
+		 * Ajax request complete event
+		 * @type {String}
+		 * @constant
+		 * @default
+		 */	
+		AJAX_REQUEST_COMPLETE: "webjs.ajaxComplete",
+		
+		/**
+		 * Ajax request error event
+		 * @event module:webjs-client~WebJS.Events#ajaxError
+		 * @type {String}
+		 */
+		/**
+		 * Ajax request error event
+		 * @type {String}
+		 * @constant
+		 * @default
+		 */	
+		AJAX_REQUEST_ERROR: "webjs.ajaxError",
+		
+		/**
+		 * Message
+		 * @event module:webjs-client~WebJS.Events#message
+		 * @type {Object}
+		 */
+		/**
+		 * Message
+		 * @type {String}
+		 * @constant
+		 * @default
+		 */	
+		MESSAGE: "webjs.message",
+	},
+	
+	/**
+	 * WebJS initialization :
+	 * &lt;ul>&lt;li>log messages from HTML response&lt;/li>&lt;/ul>
+	 */
+	init: function() {
+		var webjs = this;
+		$(window).load(function() {
+			webjs.logMessages($("html"));
+		});
+	},
+		
+	/** 
+	 * Updates a web part
+	 * @param {String} webPart WebPart to be executed
+	 * @param {Array} parameters Parameters to be passed to web part
+	 * @param {function} oncomplete Function called when webpart is completed
+	 * @fires module:webjs-client~WebJS.Events#ajaxStart
+	 * @fires module:webjs-client~WebJS.Events#ajaxComplete
+	 * @fires module:webjs-client~WebJS.Events#ajaxError
+	 * @todo Improve callbacks
+	 */
+	executeWebPart: function(webPart, parameters, oncomplete) {
+		var webjs = this;
+		var params = {};
+		if ( parameters ) {
+			for ( var key in parameters ) {
+				if ( parameters.hasOwnProperty(key) ) {
+					params[key] = parameters[key];
+				}
+			}
+		}
+		params[webjs.WEB_PART_PARAMETER] = webPart;
+		$(document).trigger(webjs.Events.AJAX_REQUEST_START);
+		$.ajax({
+			url: window.location.pathname,
+			type: "POST",
+			data: params,
+			dataType: "text"
+		}).done(function(data){
+			webjs.update(data);
+			if ( oncomplete && typeof(oncomplete) == "function" ) {
+				oncomplete();
+			}
+			$(document).trigger(webjs.Events.AJAX_REQUEST_COMPLETE);
+			Messages.debug(" => success", "Ajax success");
+		}).fail(function(xhr, status){
+			Messages.error("Ajax error : &lt;br/>"+this.debugAjaxRequest(webPart, parameters, status), "Ajax error");
+			$(document).trigger(webjs.Events.AJAX_REQUEST_ERROR);
+		});
+		Messages.debug("Ajax request sent : &lt;br/>"+this.debugAjaxRequest(webPart, parameters), "Ajax request sent");
+	},
+	
+	/**
+	 * Debug the Ajax request
+	 * @param {String} webPart The webPart executed
+	 * @param {Array} parameters The parameters
+	 * @param {Object} status The resulting status
+	 * @private
+	 */
+	debugAjaxRequest: function(webPart, parameters, status) {
+		var result = "- WebPart : " + webPart;
+		if ( parameters ) {
+			result += "&lt;br/>- Parameters : ";
+			for ( var key in parameters ) {
+				result += "&lt;br/>&nbsp;&nbsp;&nbsp;* " + key + " = " + parameters[key];
+			}
+		}
+		if ( status ) {
+			result += "&lt;br/>- Status : " + status;
+		}
+		return result;
+	},
+	
+	/**
+	 * Updates a set of HTML entities
+	 * @param {String} html HTML containing updates
+	 * @private
+	 */
+	update: function(html) {
+		var webjs = this;
+		
+		// Updates WebParts datas
+		$(html).find("update").children().each(function(){
+			var jq = $(this);
+			var selector = null;
+			if ( jq.attr("id") ) {
+				selector = webjs.escapeId(jq.attr("id"));
+			} else if ( jq.attr("class") ) {
+				selector = webjs.escapeClass(jq.attr("class"));
+			}
+			if ( selector ) {
+				$(selector).replaceWith(jq);
+			}
+		});
+		
+		// Logs errors
+		webjs.logMessages($(html));
+	},
+	
+	/**
+	 * Logs messages from a jQuery root using messages tag
+	 * @param jqRoot jQuery root element
+	 * @private
+	 */
+	logMessages: function(jqRoot) {
+		var messages = [];
+		jqRoot.find("messages message").each(function() {
+			messages.push(Messages.createMessage(Messages[$(this).find("level").html()], $(this).find("text").html()));
+		});
+		jqRoot.find("messages").remove();
+		if ( messages.length > 0 ) {
+			Messages.sendMessages(messages);
+		}
+	},
+	
+	/**
+	 * Gets a form by its id, in order to pass it as a parameter to a web part
+	 * @param {String} formId The form id
+	 * @return {Array} An array with all form datas
+	 */
+	getForm: function(formId) {
+	    var result = {};
+	    var arr = $(this.escapeId(formId)).serializeArray();
+	    $.each(arr, function() {
+	        if (result[this.name] !== undefined) {
+	            if (!result[this.name].push) {
+	            	result[this.name] = [o[this.name]];
+	            }
+	            result[this.name].push(this.value || '');
+	        } else {
+	        	result[this.name] = this.value || '';
+	        }
+	    });
+	    return result;
+	},
+	
+	/**
+	 * Escapes an HTML id
+	 * @param {String} id The id to be escaped
+	 * @return {String} The escaped id
+	 */ 
+	escapeId: function(id) {
+		return "#" + this.escape(id);
+	},
+	
+	/**
+	 * Escapes an HTML class
+	 * @param {String} clazz The class to be escaped
+	 * @return {String} The escaped class
+	 */
+	escapeClass: function(clazz) {
+		return "." + this.escape(clazz);
+	},
+	
+	/**
+	 * Escapes a selector
+	 * @param {String} selector The selector to be escaped
+	 * @return {String} The escaped selector
+	 * @todo To be completed
+	 */ 
+	escape: function(selector) {
+		return selector.replace(":", "\\:");
+	},
+};
+
+WebJS.init();
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Index</a></h2><h3>Modules</h3><ul><li><a href="module-configuration-client.html">configuration-client</a></li><li><a href="module-messages-client.html">messages-client</a></li><li><a href="module-messages-server.html">messages-server</a></li><li><a href="module-webjs-client.html">webjs-client</a></li><li><a href="module-webjs-server.html">webjs-server</a></li></ul><h3>Classes</h3><ul><li><a href="jQuery.html">jQuery</a></li></ul><h3>Events</h3><ul><li><a href="module-webjs-client-WebJS.Events.html#event:ajaxComplete">ajaxComplete</a></li><li><a href="module-webjs-client-WebJS.Events.html#event:ajaxError">ajaxError</a></li><li><a href="module-webjs-client-WebJS.Events.html#event:ajaxStart">ajaxStart</a></li><li><a href="module-webjs-client-WebJS.Events.html#event:message">message</a></li></ul><h3>Namespaces</h3><ul><li><a href="module-configuration-client-Configuration.html">Configuration</a></li><li><a href="module-messages-client-Messages.html">Messages</a></li><li><a href="module-messages-server-Messages.html">Messages</a></li><li><a href="module-webjs-client-WebJS.html">WebJS</a></li><li><a href="module-webjs-client-WebJS.Events.html">Events</a></li><li><a href="module-webjs-server-WebJS.html">WebJS</a></li></ul>
+</nav>
+
+<br clear="both">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.2.0-dev</a> on Thu Oct 31 2013 20:07:24 GMT+0100 (CET)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

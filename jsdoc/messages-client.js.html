@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: static/js/messages-client.js</title>
+    
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+    
+    <h1 class="page-title">Source: static/js/messages-client.js</h1>
+    
+    
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source"><code>/**
+ * Messages client module
+ * @module messages-client
+ */
+
+/**
+ * Messages client utility
+ * @namespace
+ */
+var Messages = {
+		
+	/**
+	 * Fatal message
+	 * @type {Object}
+	 * @constant
+	 * @default
+	 */		
+	FATAL: { 
+		name: "fatal",
+		console: true,
+		popup: true,
+	},
+	
+	/**
+	 * Error message
+	 * @type {Object}
+	 * @constant
+	 * @default
+	 */
+	ERROR: { 
+		name: "error",
+		console: true,
+		popup: true,
+	},
+	
+	/**
+	 * Warn message
+	 * @type {Object}
+	 * @constant
+	 * @default
+	 */
+	WARN: { 
+		name: "warn",
+		console: true,
+		popup: false,
+	},
+	
+	/**
+	 * Info message
+	 * @type {Object}
+	 * @constant
+	 * @default
+	 */
+	INFO: { 
+		name: "info",
+		console: true,
+		popup: true,
+	},
+	
+	/**
+	 * Debug message
+	 * @type {Object}
+	 * @constant
+	 * @default
+	 */
+	DEBUG: { 
+		name: "debug",
+		console: true,
+		popup: false,
+	},
+	
+	/**
+	 * Available messages types
+	 * @type {Array}
+	 * @constant
+	 * @default
+	 */
+	TYPES: [],
+		
+	/**
+	 * Initialization :
+	 * &lt;ul>&lt;li>add some html to display messages&lt;/li>
+	 * &lt;li>registration of the message event&lt;/li>
+	 * &lt;li>registration of the loading event&lt;/li>&lt;/ul>
+	 * @private
+	 */
+	init: function() {
+		this.TYPES = [this.DEBUG, this.INFO, this.WARN, this.ERROR, this.FATAL];
+		this.addHTML();
+		this.registerMessageEvent();
+		this.registerLoadingEvent();
+	},
+	
+	/**
+	 * Adds some HTML to display messages
+	 * @private
+	 */
+	addHTML: function() {
+		$(function(){
+			$("body").append(
+				"&lt;div class='messages'>" +
+					"&lt;div class='messages-console' title='Console'>&lt;ul>&lt;/ul>&lt;/div>" +
+					"&lt;div class='messages-popup' title='Message'>&lt;/div>" +
+					"&lt;div class='messages-loading'>&lt;/div>" +
+				"&lt;/div>");
+		});
+	},
+	
+	/**
+	 * Shows a message
+	 * @param {Object} message Message object
+	 * @private
+	 */
+	addMessage: function(message) {
+		
+		// Console message type
+		this.addMessageToConsole(message);
+		
+		// Popup message type
+		if ( this.mustBeAddedToPopup(message) ) {
+			this.clearMessagePopup();
+			this.addMessageToPopup(message);
+			this.showMessagePopup(message.title ? message.title : "Message");
+		}
+	},
+	
+	/**
+	 * Adds a message to the console, if specified by the message type and console is enabled
+	 * @param message {Object} The message
+	 * @return {Boolean} true if the popup should be showed, false otherwise
+	 * @private
+	 */
+	addMessageToConsole: function(message) {
+		if ( this.mustBeAddedToConsole(message) ) {
+			var date = moment(message.date).format("YYYY-MM-DD HH:mm:ss.SSS");
+			$(".messages-console ul").append("&lt;li class='message-"+message.type.name+"'>&lt;strong>"+date+" "+message.type.name+"&lt;/strong> "+message.message+"&lt;/li>");
+			return true;
+		} else {
+			return false;
+		}
+	},
+	
+	/**
+	 * Adds a message to the popup, if specified by the message type and popups are enabled
+	 * @param message {Object} The message
+	 * @return {Boolean} true if the popup should be showed, false otherwise
+	 * @private
+	 */
+	addMessageToPopup: function(message) {
+		if ( this.mustBeAddedToPopup(message) ) {
+			$(".messages-popup").append("&lt;div class='message-"+message.type.name+"'>"+message.message+"&lt;/div>");
+			return true;
+		} else {
+			return false;
+		}
+	},
+	
+	/**
+	 * Returns true if the given message should be added to console
+	 * @param message {Object} The message
+	 * @returns {Boolean}
+	 * @private
+	 */
+	mustBeAddedToConsole: function(message) {
+		return Configuration.consoleEnabled && message.type.console;
+	},
+	
+	/**
+	 * Returns true if the given message should be added to popup
+	 * @param message {Object} The message
+	 * @returns {Boolean}
+	 * @private
+	 */
+	mustBeAddedToPopup: function(message) {
+		return Configuration.popupEnabled && message.type.popup;
+	},
+	
+	/**
+	 * Clears message popup
+	 * @private
+	 */
+	clearMessagePopup: function() {
+		$(".messages-popup").html("");
+	},
+	
+	/**
+	 * Shows a list of messages
+	 * @param {Array} messages Messages objects
+	 * @private
+	 */
+	addMessages: function(messages) {
+		var _this = this;
+		
+		// For each message
+		var popupMessages = [];
+		$.each(messages, function() {
+			var message = this;
+			
+			// Log everything to the console
+			_this.addMessageToConsole(message);
+			
+			// List messages to send to a popup
+			if ( _this.mustBeAddedToPopup(message) ) {
+				popupMessages.push(message);
+			}
+		});
+		
+		// For each popup message
+		if ( popupMessages.length > 0 ) {
+			_this.clearMessagePopup();
+			$.each(popupMessages, function() {
+				_this.addMessageToPopup(this);
+			});
+			_this.showMessagePopup("Message");
+		}
+	},
+	
+	/**
+	 * Registers message event
+	 * @private
+	 */
+	registerMessageEvent: function() {
+		var _this = this;
+		$(function(){
+			$(document).on(WebJS.Events.MESSAGE, function(event, message) {
+				if ( arguments.length == 2 ) {
+					_this.addMessage(message);
+				} else if ( arguments.length > 2 ) {
+					var messages = [];
+					for ( var i = 1; i &lt; arguments.length; i++ ) {
+						messages.push(arguments[i]);
+					}
+					_this.addMessages(messages);
+				}
+			});
+		});
+	},
+	
+	/**
+	 * Registers loading event
+	 * @private
+	 */
+	registerLoadingEvent: function() {
+		var _this = this;
+		$(function(){
+			if ( Configuration.loadingEnabled ) {
+				$(document).on(WebJS.Events.AJAX_REQUEST_START, function() {
+					_this.showLoading();
+				});
+				$(document).on(WebJS.Events.AJAX_REQUEST_COMPLETE+" "+WebJS.Events.AJAX_REQUEST_ERROR, function() {
+					_this.showLoading(true);
+				});
+			}
+		});
+	},
+	
+	/**
+	 * Shows a modal popup
+	 * @param {Object} jqueryObj The jQuery object to transform to modal popup
+	 * @param {String} title The title
+	 * @param {Object} properties Other dialog properties
+	 * @private
+	 */
+	showPopup: function(jqueryObj, title, properties) {
+		if ( title ) {
+			jqueryObj.attr("title", title );
+		}
+		
+		// Building dialog
+		var dialogTemplate = {
+			modal: true,
+			buttons: {
+				OK: function() {
+					$(this).dialog("destroy");
+				}
+			},
+			close: function(event, ui) {
+				$(this).dialog("destroy");
+			}
+		};
+		var dialog = $().extend({}, dialogTemplate);
+		if ( properties ) {
+			$().extend(dialog, properties);
+			if ( properties.buttons ) {
+				dialog.buttons = $().extend({}, properties.buttons);
+				$().extend(dialog.buttons, dialogTemplate.buttons);
+			}
+		}
+		
+		// Creating the dialog
+		jqueryObj.dialog(dialog);
+	},
+	
+	/**
+	 * Shows a modal popup for the messages
+	 * @param {String} title The title
+	 * @param {Object} properties Other dialog properties
+	 * @private
+	 */
+	showMessagePopup: function(title, properties) {
+		this.showPopup($(".messages-popup"), title, properties);
+	},
+	
+	/**
+	 * Show the console
+	 * @param {boolean} hide Hides the console if it's true, otherwise, shows it
+	 */
+	showConsole: function(hide) {
+		if ( hide ) {
+			$(".messages-console").dialog("destroy");
+		} else {
+			this.showPopup($(".messages-console"), null, {
+				modal: false, 
+				minWidth: 500, 
+				minHeight: 400,
+				buttons: {
+					Clear: function(event, ui) {
+						$(this).find("ul").html("");
+					}
+				}
+			});
+		}
+	},
+	
+	/**
+	 * Shows a loading blocking popup
+	 * @param {boolean} hide Hides the blocking popup if it's true, otherwise, shows it
+	 */
+	showLoading: function(hide) {
+		if ( hide ) {
+			$(".messages-loading").dialog("destroy");
+		} else {
+			
+			// Gets loading width and height in order to create a well dimensionned popup
+			var messages = $(".messages");
+			var loading = $(".messages-loading");
+			messages.show();
+			var width = loading.width();
+			var height = loading.height();
+			messages.hide();
+			
+			// Creates the popup
+			this.showPopup(loading, null, {
+				dialogClass: "messages-loading-popup", 
+				resizable: false, 
+				height: height + 6, // FIXME Get this +6 padding from styles 
+				width: width, 
+				minHeight: "none", 
+				minWidth: "none"
+			});
+		}
+	},
+	
+	/**
+	 * Displays a fatal message
+	 * @param {String} message Message
+	 * @param {String} title Title
+	 */
+	fatal: function(message, title) {
+		this.sendMessage(this.FATAL, message, title);
+	},
+	
+	/**
+	 * Displays an error message
+	 * @param {String} message Message
+	 * @param {String} title Title
+	 */
+	error: function(message, title) {
+		this.sendMessage(this.ERROR, message, title);
+	},
+	
+	/**
+	 * Displays a warn message
+	 * @param {String} message Message
+	 * @param {String} title Title
+	 */
+	warn: function(message, title) {
+		this.sendMessage(this.WARN, message, title);
+	},
+	
+	/**
+	 * Displays an info message
+	 * @param {String} message Message
+	 * @param {String} title Title
+	 */
+	info: function(message, title) {
+		this.sendMessage(this.INFO, message, title);
+	},
+	
+	/**
+	 * Displays a debug message
+	 * @param {String} message Message
+	 * @param {String} title Title
+	 */
+	debug: function(message, title) {
+		this.sendMessage(this.DEBUG, message, title);
+	},
+	
+	/**
+	 * Creates a message
+	 * @param {String} type Message type
+	 * @param {String} message Message
+	 * @param {String} title Title
+	 */
+	createMessage: function(type, message, title) {
+		return {type: type, message: message, title: title, date: new Date()};
+	},
+	
+	/**
+	 * Sends a message
+	 * @param {String} type Message type
+	 * @param {String} message Message
+	 * @param {String} title Title
+	 * @fires module:webjs-client~WebJS.Events#ajaxStart
+	 */
+	sendMessage: function(type, message, title) {
+		$(document).trigger(WebJS.Events.MESSAGE, this.createMessage(type, message, title));
+	},
+	
+	/**
+	 * Sends multiple messages
+	 * @param {Array} messages List of messages objects
+	 * @fires module:webjs-client~WebJS.Events#ajaxStart
+	 */
+	sendMessages: function(messages) {
+		$(document).trigger(WebJS.Events.MESSAGE, messages);
+	},
+};
+
+// Initialization
+Messages.init();
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Index</a></h2><h3>Modules</h3><ul><li><a href="module-configuration-client.html">configuration-client</a></li><li><a href="module-messages-client.html">messages-client</a></li><li><a href="module-messages-server.html">messages-server</a></li><li><a href="module-webjs-client.html">webjs-client</a></li><li><a href="module-webjs-server.html">webjs-server</a></li></ul><h3>Classes</h3><ul><li><a href="jQuery.html">jQuery</a></li></ul><h3>Events</h3><ul><li><a href="module-webjs-client-WebJS.Events.html#event:ajaxComplete">ajaxComplete</a></li><li><a href="module-webjs-client-WebJS.Events.html#event:ajaxError">ajaxError</a></li><li><a href="module-webjs-client-WebJS.Events.html#event:ajaxStart">ajaxStart</a></li><li><a href="module-webjs-client-WebJS.Events.html#event:message">message</a></li></ul><h3>Namespaces</h3><ul><li><a href="module-configuration-client-Configuration.html">Configuration</a></li><li><a href="module-messages-client-Messages.html">Messages</a></li><li><a href="module-messages-server-Messages.html">Messages</a></li><li><a href="module-webjs-client-WebJS.html">WebJS</a></li><li><a href="module-webjs-client-WebJS.Events.html">Events</a></li><li><a href="module-webjs-server-WebJS.html">WebJS</a></li></ul>
+</nav>
+
+<br clear="both">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.2.0-dev</a> on Thu Oct 31 2013 20:07:24 GMT+0100 (CET)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

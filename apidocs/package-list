@@ -1,0 +1,14 @@
+fr.dz.webjs
+fr.dz.webjs.annotation
+fr.dz.webjs.beans
+fr.dz.webjs.config
+fr.dz.webjs.config.schema
+fr.dz.webjs.exception
+fr.dz.webjs.localization
+fr.dz.webjs.message
+fr.dz.webjs.page
+fr.dz.webjs.request
+fr.dz.webjs.scripts
+fr.dz.webjs.servlet
+fr.dz.webjs.template
+fr.dz.webjs.utils

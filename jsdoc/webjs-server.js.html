@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: scripts/server/webjs-server.js</title>
+    
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+    
+    <h1 class="page-title">Source: scripts/server/webjs-server.js</h1>
+    
+    
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source"><code>/**
+ * WebJS server module
+ * @module webjs-server
+ */
+
+/** 
+ * JQuery extensions for templating and returning the result
+ * @class jQuery
+ */
+jQuery.fn.extend(
+/** @lends jQuery */
+{
+	contextPath: function(attr, prefix) {
+		return this.attr(attr, function() { return request.contextPath + this[attr].replace(prefix, ""); });
+	},
+	print: function(doctype) {
+		doctype = doctype || "&lt;!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">";
+		return doctype
+		 + "\n"
+		 + this[0].innerHTML;
+	},
+	
+	/**
+	 * Loop template addition to jQuery.&lt;br/>
+	 * For example, if you want to copy a div.blog-entry using an array of entries :&lt;br/>
+	 * &lt;pre>$(".blog-entry").template(entries, function(entry, index) {
+	 *	 this.appendTo(".blog");
+	 *	 this.attr("id", "blog-entry-"+entry.id);
+	 *	 this.attr("data-pk", entry.id);
+	 *	 this.find(".blog-entry-title").text(entry.title);
+	 *	 this.find(".blog-entry-author").text(entry.author);
+	 *	 this.find(".blog-entry-text").text(entry.text);
+	 * });&lt;/pre>
+	 * @param {Array} list
+	 * @param {function} handler
+	 */
+	template: function(list, handler) {
+		var template = this.remove();
+		list.forEach(function() {
+			handler.apply(template.clone(), arguments);
+		});
+	},
+	
+	list: function(list, separator, handler) {
+		var result = [];
+		list.forEach(function(entry, index) {
+			result.push( handler(entry, index) );
+		});
+		return this.html( result.join(separator) );
+	},
+	validate: function() {
+	
+	}
+});
+
+// String formatting
+String.format = function(source, params) {
+	if ( arguments.length == 1 ) 
+		return function() {
+			var args = jQuery.makeArray(arguments);
+			args.unshift(source);
+			return String.format.apply( this, args );
+		};
+	if ( arguments.length > 2 && params.constructor != Array  ) {
+		params = jQuery.makeArray(arguments).slice(1);
+	}
+	if ( params.constructor != Array ) {
+		params = [ params ];
+	}
+	jQuery.each(params, function(i, n) {
+		source = source.replace(new RegExp("\\{" + i + "\\}", "g"), n);
+	});
+	return source;
+};
+
+/** 
+ * Prints given arguments to standard output
+ * @param {Array} arguments Strings to be displayed
+ */
+function print() {
+	java.lang.System.out.println($.makeArray(arguments).join(", "));
+}
+
+/**
+ * Loads and executes a list of JavaScripts files
+ * @function module:webjs-server~load
+ * @param {Array} scripts List of scripts to be loaded
+ * @see Defined in Java code fr.dz.webjs.scripts.WebJSScriptLibrary
+ */
+
+/**
+ * Reads a file and returns its content
+ * @function module:webjs-server~readFile
+ * @param {String} filename The file name
+ * @return {String} The file content
+ * @see Defined in Java code fr.dz.webjs.scripts.WebJSScriptLibrary
+ */
+
+/**
+ * Gets a message from the resource bundles using client locale
+ * @function module:webjs-server~getMessage
+ * @param {String} key The message key
+ * @param {Array} parameters The message parameters
+ * @return {String} The message
+ * @see Defined in Java code fr.dz.webjs.scripts.WebJSScriptLibrary
+ */
+
+/**
+ * Gets a Log4J logger from JS. A JS exception is needed to get script name and script line.
+ * @function module:webjs-server~internalGetLogger
+ * @param {String} exception The exception
+ * @see Defined in Java code fr.dz.webjs.scripts.WebJSScriptLibrary
+ * @private
+ * @deprecated Use {@link module:messages-server~Messages} instead
+ */
+
+/**
+ * Gets a Log4J logger from JS.
+ * @function module:webjs-server~getLogger
+ * @return {Object} A Log4J logger reflecting javascript.&lt;script_file_name>:&lt;line_number>
+ * @deprecated Use {@link module:messages-server~Messages} instead
+ */
+function getLogger() {
+	try {
+		throw new Packages.java.lang.Exception("JS logger exception");
+	} catch(e) {
+		return internalGetLogger(e);
+	}
+}
+
+/**
+ * WebJS server utility
+ * @namespace
+ */
+var WebJS = {
+	
+	/**
+     * Default WebJS client scripts added to generated web pages
+     * @type {Array}
+     * @constant
+     */
+	CLIENT_SCRIPTS: ["webjs-static/js/moment.js", "webjs-static/js/jquery.js", "webjs-static/js/jquery-ui.js", 
+	                 "webjs-generated/js/configuration-client.js", "webjs-static/js/webjs-client.js", 
+	                 "webjs-static/js/messages-client.js" ],
+	
+	/**
+     * Default WebJS CSSs added to generated web pages
+     * @type {Array}
+     * @constant
+     */
+	CSS: ["webjs-static/css/webjs.css", "webjs-static/css/messages.css" ],
+	
+	/**
+	 * WebJS initializations :
+	 * &lt;ul>&lt;li>loads the given template, if exists&lt;/li>
+	 * &lt;li>adds default WebJS client scripts&lt;/li>
+	 * &lt;li>relocate links to match request&lt;/li>
+	 * &lt;li>feeds messages&lt;/li>&lt;/ul>
+	 * @private
+	 */
+	init: function() {
+		this.loadTemplate();
+		this.addHeaders();
+		this.relocateLinks();
+	},
+	
+	/** 
+	 * Loads the associated template
+	 * @private
+	 */
+	loadTemplate: function() {
+		var template = $("html").attr("webjs:template");
+		if ( template !== undefined ) {
+			var templateDocument = $(readFile(template));
+			
+			// Fills headers
+			var templateHead = templateDocument.find("head");
+			$("head").children().each(function(){
+				templateHead.append($(this).clone());
+			});
+			
+			// Fills include tags
+			templateDocument.find(WebJS.escape("webjs:include")).each(function(){
+				var include = $(this);
+				var source = $(WebJS.escapeId(include.attr("id")));
+				include.replaceWith(source.clone());
+			});
+			
+			// Replaces document by the new one
+			$(document).find("head").replaceWith(templateDocument.find("head"));
+			$(document).find("body").replaceWith(templateDocument.find("body"));
+			
+			// Deletes template attribute
+			$("html").removeAttr("webjs:template");
+		}
+	},
+	
+	/**
+	 * If links are relative, adds the request base URI before
+	 * @private
+	 */
+	relocateLinks: function() {
+		$("link, a").each(function() {
+			var jq = $(this);
+			var href = jq.attr("href");
+			if ( href && href != '' && href.indexOf(":") == -1 && href.indexOf("#") != 0 ) {
+				jq.attr("href", request.contextRoot + "/" + href );
+			}
+		});
+		$("script, img").each(function() {
+			var jq = $(this);
+			var src = jq.attr("src");
+			if ( src && src != '' && src.indexOf(":") == -1 && src.indexOf("#") != 0 ) {
+				jq.attr("src", request.contextRoot + "/" + src );
+			}
+		});
+	},
+	
+	/**
+	 * Add WebJS client scripts and CSS to HTML headers
+	 * @private
+	 */ 
+	addHeaders: function() {
+		$.makeArray(this.CLIENT_SCRIPTS).reverse().forEach(function(clientScript, index) {
+			var script = $("&lt;script/>")
+				.attr("src", clientScript)
+				.attr("type", "text/javascript");
+			$("head").prepend(script);
+		});
+		$.makeArray(this.CSS).reverse().forEach(function(css, index) {
+			var link = $("&lt;link/>")
+				.attr("href", css)
+				.attr("rel", "stylesheet");
+			$("head").prepend(link);
+		});
+		
+		// Theme CSS
+		var link = $("&lt;link/>")
+			.attr("href", "webjs-static/themes/"+this.getTheme()+"/jquery-ui.css")
+			.attr("rel", "stylesheet");
+		$("head").prepend(link);
+	},
+	
+	/**
+	 * Feeds localized messages using resources
+	 * @param jqRoot jQuery root
+	 * @private
+	 */ 
+	feedLocalizedMessages: function(jqRoot) {
+		jqRoot.find(WebJS.escape("webjs:message")).each(function(){
+			var messageNode = $(this);
+			var id = messageNode.attr("id");
+			var parameters = [];
+			messageNode.find(WebJS.escape("webjs:parameter")).each(function(){
+				parameters.push($(this).attr("value"));
+			});
+			var message = getMessage(id, parameters);
+			if ( message ) {
+				messageNode.replaceWith(message);
+			} else {
+				messageNode.replaceWith("/!\\ "+id+" /!\\");
+			}
+		});
+	},
+	
+	/** 
+	 * Returns the page result :
+	 * &lt;ul>&lt;li>feeds messages&lt;/li>
+	 * &lt;li>fixes textareas&lt;/li>&lt;/ul>
+	 * @private
+	 */
+	returnResult: function() {
+		
+		// The whole page need to be rendered (no ajax)
+		if ( this.isWholePageRendered() ) {
+			
+			// Feed localization messages
+			this.feedLocalizedMessages($("html"));
+			
+			// Send messages to the client
+			var append = $("body").append("&lt;messages/>");
+			for ( var i = 0; i &lt; request.messages.size(); i++ ) {
+				append.append($("&lt;message>&lt;level>"+request.messages.get(i).level+"&lt;/level>&lt;text>"+request.messages.get(i).message+"&lt;/text>&lt;/message>"));
+			}
+			
+			// Fix some HTML tags
+			return this.fixHTMLTags($(document).print());
+		}
+		// Else, it's an Ajax result, so we need to generate a result
+		else {
+			var result = $("&lt;html>&lt;webpart>&lt;update>&lt;/update>&lt;messages>&lt;/messages>&lt;/webpart>&lt;/html>");
+			
+			// HTML updates
+			var append = result.find("update");
+			request.renderSelector.split(",").forEach(function(selector,index) {
+				$(selector).each(function(){
+					append.append($(this).clone());
+				});
+			});
+			
+			// Feed localization messages
+			this.feedLocalizedMessages(result);
+			
+			// Sends messages to the client
+			append = result.find("messages");
+			for ( var i = 0; i &lt; request.messages.size(); i++ ) {
+				append.append($("&lt;message>&lt;level>"+request.messages.get(i).level+"&lt;/level>&lt;text>"+request.messages.get(i).message+"&lt;/text>&lt;/message>"));
+			}
+			
+			// Fix some HTML tags
+			return this.fixHTMLTags(result.html());
+		}
+	},
+	
+	/**
+	 * Replaces &lt;textarea /> to &lt;textarea>&lt;/textarea> because browsers can't manage it...
+	 * Idem for &lt;div />
+	 * @private
+	 */ 
+	fixHTMLTags: function(html) {
+		["textarea", "div"].forEach(function(tag, index){
+			html = html.replace(new RegExp("&lt;"+tag+"([^>]*)\\/>","g"), "&lt;"+tag+"$1>&lt;/"+tag+">");
+		});
+		return html;
+	},
+	
+	/**
+	 * Returns true if the whole page is rendered
+	 */
+	isWholePageRendered: function() {
+		return request.renderSelector == null || request.renderSelector == '' || request.renderSelector == request.DEFAULT_RENDER_SELECTOR;
+	},
+	
+	/**
+	 * Tests the existence of bind variables
+	 * @param {Array} bindNames List of bind variables names
+	 * @param {function} callbackExists Function executed if the bindings exist
+	 * @param {function} callbackNotExists Function executed if the bindings not exist
+	 */
+	checkBindings: function(bindNames, callbackExists, callbackNotExists) {
+		var allExist = true;
+		$.makeArray(bindNames).forEach(function(bindName, index) {
+			allExist = allExist && eval("typeof("+bindName+")") != "undefined";
+		});
+		if ( allExist && callbackExists && typeof(callbackExists) == "function" ) {
+			callbackExists();
+		}
+		if ( ! allExist && callbackNotExists && typeof(callbackNotExists) == "function" ) {
+			callbackNotExists();
+		}
+	},
+	
+	/**
+	 * Appends a static HTML file into a given node
+	 * @param {Object} node jQuery Node to be appended
+	 * @param {String} htmlFile HTML filename
+	 */
+	appendHtmlFile: function(node, htmlFile) {
+		var fileContent = $(readFile(htmlFile)).find("body");
+		node.append(fileContent);
+	},
+	
+	/**
+	 * Escapes an HTML id
+	 * @param {String} id The id to be escaped
+	 * @return {String} The escaped id
+	 */ 
+	escapeId: function(id) {
+		return "#" + this.escape(id);
+	},
+	
+	/**
+	 * Escapes an HTML class
+	 * @param {String} clazz The class to be escaped
+	 * @return {String} The escaped class
+	 */
+	escapeClass: function(clazz) {
+		return "." + this.escape(clazz);
+	},
+	
+	/**
+	 * Escapes a selector
+	 * @param {String} selector The selector to be escaped
+	 * @return {String} The escaped selector
+	 * @todo To be completed
+	 */ 
+	escape: function(selector) {
+		return selector.replace(":", "\\:");
+	},
+	
+	/**
+	 * Return the used theme
+	 * @return {String} The theme name
+	 * @todo Parameterize theme for the user
+	 */
+	getTheme: function() {
+		return request.webJS.configuration.xmlConfiguration.clientBehavior.defaultTheme;
+	},
+};
+
+// WebJS initialization
+WebJS.init();
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Index</a></h2><h3>Modules</h3><ul><li><a href="module-configuration-client.html">configuration-client</a></li><li><a href="module-messages-client.html">messages-client</a></li><li><a href="module-messages-server.html">messages-server</a></li><li><a href="module-webjs-client.html">webjs-client</a></li><li><a href="module-webjs-server.html">webjs-server</a></li></ul><h3>Classes</h3><ul><li><a href="jQuery.html">jQuery</a></li></ul><h3>Events</h3><ul><li><a href="module-webjs-client-WebJS.Events.html#event:ajaxComplete">ajaxComplete</a></li><li><a href="module-webjs-client-WebJS.Events.html#event:ajaxError">ajaxError</a></li><li><a href="module-webjs-client-WebJS.Events.html#event:ajaxStart">ajaxStart</a></li><li><a href="module-webjs-client-WebJS.Events.html#event:message">message</a></li></ul><h3>Namespaces</h3><ul><li><a href="module-configuration-client-Configuration.html">Configuration</a></li><li><a href="module-messages-client-Messages.html">Messages</a></li><li><a href="module-messages-server-Messages.html">Messages</a></li><li><a href="module-webjs-client-WebJS.html">WebJS</a></li><li><a href="module-webjs-client-WebJS.Events.html">Events</a></li><li><a href="module-webjs-server-WebJS.html">WebJS</a></li></ul>
+</nav>
+
+<br clear="both">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.2.0-dev</a> on Thu Oct 31 2013 20:07:24 GMT+0100 (CET)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
